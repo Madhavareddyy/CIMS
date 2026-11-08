@@ -50,55 +50,25 @@ class CIMSAuthService {
         const userCredential = await window.CIMS.db.auth.signInWithEmailAndPassword(emailTrimmed, password);
         const uid = userCredential.user.uid;
         const profile = await window.CIMS.db.getUserById(uid);
-        if (!profile) {
-          throw new Error("User record not found in system database.");
+        if (profile) {
+          const userObj = {
+            uid,
+            email: userCredential.user.email,
+            fullName: profile.fullName || "User",
+            role: profile.role || "student",
+            department: profile.department || "",
+            studentId: profile.studentId || "",
+            staffId: profile.staffId || ""
+          };
+          this.setCurrentUser(userObj);
+          return userObj;
         }
-        const userObj = {
-          uid,
-          email: userCredential.user.email,
-          fullName: profile.fullName || "User",
-          role: profile.role || "student",
-          department: profile.department || "",
-          studentId: profile.studentId || "",
-          staffId: profile.staffId || ""
-        };
-        this.setCurrentUser(userObj);
-        return userObj;
       } catch (err) {
-        console.error("Firebase Auth Error:", err);
-        if (
-          err.code === "auth/configuration-not-found" || 
-          err.message?.includes("configuration-not-found") ||
-          err.code === "auth/api-key-not-valid" ||
-          err.code === "auth/invalid-api-key" ||
-          err.code === "auth/operation-not-allowed" ||
-          err.code === "auth/project-not-found" ||
-          err.code === "auth/user-not-found"
-        ) {
-          console.warn("Falling back to institutional local database check...");
-          try {
-            return await this.loginLocally(email, password);
-          } catch (localErr) {
-            if (err.code === "auth/user-not-found") {
-              throw new Error("No registered account found with this email address.");
-            }
-            throw localErr;
-          }
-        }
-
-        let msg = "Invalid email or password.";
-        if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-          msg = "Incorrect email address or password.";
-        } else if (err.code === "auth/too-many-requests") {
-          msg = "Too many failed attempts. Please try again later.";
-        } else if (err.message) {
-          msg = err.message;
-        }
-        throw new Error(msg);
+        console.warn("Cloud authentication check notice (proceeding to check institutional database):", err.code || err.message);
       }
     }
 
-    // 2. Institutional Database Authentication
+    // 2. Institutional Database Authentication (covers pre-seeded accounts: Facility Admin, Staff, Student)
     return await this.loginLocally(email, password);
   }
 

@@ -23,6 +23,17 @@
       </div>
 
       <div class="auth-body">
+        <!-- Active Session Switch Notice (Shown if user is already logged in) -->
+        <div id="activeSessionNotice" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-bottom:18px;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-size:12px;color:#166534;line-height:1.4;">
+            Active session: <strong id="activeUserName"></strong>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button type="button" id="btnGoToExisting" class="btn btn-sm btn-primary" style="padding:5px 10px;font-size:11px;">Go to Dashboard</button>
+            <button type="button" id="btnSignOutCurrent" class="btn btn-sm btn-secondary" style="padding:5px 10px;font-size:11px;">Sign Out</button>
+          </div>
+        </div>
+
         <!-- Portal Role Selector Tabs -->
         <div class="portal-tab-bar" id="portalTabBar">
           <button type="button" class="portal-tab-btn active" data-role="student" data-email="aarav.student@college.edu">🎓 Student</button>
@@ -120,35 +131,40 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // If session exists, auto redirect
+      const emailInput = document.getElementById("loginEmail");
+      const passwordInput = document.getElementById("loginPassword");
+      const toggleBtn = document.getElementById("togglePasswordBtn");
+      const rememberCheckbox = document.getElementById("rememberMeCheckbox");
+      const form = document.getElementById("loginForm");
+      const alertBox = document.getElementById("loginAlertBox");
+      const submitBtn = document.getElementById("btnLoginSubmit");
+      const tabBtns = document.querySelectorAll(".portal-tab-btn");
+      const sessionBanner = document.getElementById("activeSessionNotice");
+
+      // Check for existing active session
       const existingUser = window.CIMS.auth.getCurrentUser();
-      if (existingUser) {
-        window.CIMS.auth.redirectToDashboard(existingUser.role);
-        return;
+      const urlParams = new URLSearchParams(window.location.search);
+
+      if (urlParams.get("logout") === "true") {
+        window.CIMS.auth.logout();
+      } else if (existingUser && sessionBanner) {
+        // Display notice and let user choose to continue or switch
+        sessionBanner.style.display = "flex";
+        document.getElementById("activeUserName").textContent = `${existingUser.fullName} (${existingUser.role.toUpperCase()})`;
+        
+        document.getElementById("btnGoToExisting").onclick = () => {
+          window.CIMS.auth.redirectToDashboard(existingUser.role);
+        };
+        
+        document.getElementById("btnSignOutCurrent").onclick = () => {
+          localStorage.removeItem("cims_current_user");
+          window.CIMS.auth.currentUser = null;
+          sessionBanner.style.display = "none";
+          window.CIMS.utils.showToast("Signed out. You can now log in with another account.", "info");
+        };
       }
 
       // Password toggle
-      const passwordInput = document.getElementById("loginPassword");
-      const toggleBtn = document.getElementById("togglePasswordBtn");
-      const emailInput = document.getElementById("loginEmail");
-
-      // Portal Role Tab Switcher
-      const tabBtns = document.querySelectorAll(".portal-tab-btn");
-      tabBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-          tabBtns.forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          emailInput.value = btn.dataset.email;
-          passwordInput.value = "password123";
-        });
-      });
-
-      // Default initial role fill
-      if (!localStorage.getItem("cims_saved_email")) {
-        emailInput.value = "aarav.student@college.edu";
-        passwordInput.value = "password123";
-      }
-
       if (toggleBtn && passwordInput) {
         toggleBtn.addEventListener("click", () => {
           const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
@@ -156,20 +172,49 @@
         });
       }
 
-      // Remember me retrieval
-      const emailInput = document.getElementById("loginEmail");
-      const rememberCheckbox = document.getElementById("rememberMeCheckbox");
-      const savedEmail = localStorage.getItem("cims_saved_email");
-      if (savedEmail && emailInput) {
-        emailInput.value = savedEmail;
-        if (rememberCheckbox) rememberCheckbox.checked = true;
+      // Portal Role Tab Switcher function
+      function selectRoleTab(roleName) {
+        tabBtns.forEach(b => {
+          if (b.dataset.role === roleName) {
+            b.classList.add("active");
+            emailInput.value = b.dataset.email;
+            passwordInput.value = "password123";
+          } else {
+            b.classList.remove("active");
+          }
+        });
+        if (alertBox) {
+          alertBox.className = "form-alert";
+          alertBox.textContent = "";
+        }
+      }
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectRoleTab(btn.dataset.role);
+        });
+      });
+
+      // Check URL param or initial fill
+      const targetRoleParam = urlParams.get("role");
+      if (targetRoleParam && ["student", "admin", "staff"].includes(targetRoleParam)) {
+        selectRoleTab(targetRoleParam);
+      } else {
+        const savedEmail = localStorage.getItem("cims_saved_email");
+        if (savedEmail) {
+          emailInput.value = savedEmail;
+          passwordInput.value = "password123";
+          if (rememberCheckbox) rememberCheckbox.checked = true;
+          // Match tab if possible
+          if (savedEmail.includes("admin")) selectRoleTab("admin");
+          else if (savedEmail.includes("maintenance") || savedEmail.includes("staff")) selectRoleTab("staff");
+          else selectRoleTab("student");
+        } else {
+          selectRoleTab("student");
+        }
       }
 
       // Login Submission
-      const form = document.getElementById("loginForm");
-      const alertBox = document.getElementById("loginAlertBox");
-      const submitBtn = document.getElementById("btnLoginSubmit");
-
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         alertBox.className = "form-alert";
