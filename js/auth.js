@@ -273,6 +273,60 @@ class CIMSAuthService {
       });
     });
 
+    // Render Quick Portal Switcher in sidebar footer
+    const sidebarFooter = document.querySelector(".sidebar-footer");
+    if (sidebarFooter && !document.getElementById("quickPortalSwitcher")) {
+      const switchBox = document.createElement("div");
+      switchBox.className = "portal-switch-wrapper";
+      switchBox.style.cssText = "margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#94a3b8;";
+      switchBox.innerHTML = `
+        <span style="font-weight:600;">Switch Portal:</span>
+        <select id="quickPortalSwitcher" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:3px 6px;font-size:11px;cursor:pointer;">
+          <option value="student" ${user.role === 'student' ? 'selected' : ''}>🎓 Student</option>
+          <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>🛡️ Facility Admin</option>
+          <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>🔧 Technician</option>
+        </select>
+      `;
+      sidebarFooter.appendChild(switchBox);
+
+      document.getElementById("quickPortalSwitcher").addEventListener("change", (e) => {
+        const targetRole = e.target.value;
+        if (targetRole === user.role) return;
+
+        if (targetRole === "admin") {
+          this.setCurrentUser({
+            uid: "admin-001",
+            fullName: "Prof. Vikram Malhotra",
+            email: "admin@college.edu",
+            role: "admin",
+            department: "Campus Estate & Facility Management",
+            staffId: "ADM-001"
+          });
+          window.location.href = "admin-dashboard.html";
+        } else if (targetRole === "staff") {
+          this.setCurrentUser({
+            uid: "staff-101",
+            fullName: "Ramesh Sharma",
+            email: "ramesh.maintenance@college.edu",
+            role: "staff",
+            department: "Electrical & AV",
+            staffId: "STF-101"
+          });
+          window.location.href = "staff-dashboard.html";
+        } else if (targetRole === "student") {
+          this.setCurrentUser({
+            uid: "student-001",
+            fullName: "Aarav Gupta",
+            email: "aarav.student@college.edu",
+            role: "student",
+            department: "Computer Science & Engineering",
+            studentId: "CS2023045"
+          });
+          window.location.href = "student-dashboard.html";
+        }
+      });
+    }
+
     // Mobile sidebar toggle handler
     const mobileToggle = document.querySelector(".mobile-toggle");
     const sidebar = document.querySelector(".sidebar");

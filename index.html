@@ -23,6 +23,13 @@
       </div>
 
       <div class="auth-body">
+        <!-- Portal Role Selector Tabs -->
+        <div class="portal-tab-bar" id="portalTabBar">
+          <button type="button" class="portal-tab-btn active" data-role="student" data-email="aarav.student@college.edu">🎓 Student</button>
+          <button type="button" class="portal-tab-btn" data-role="admin" data-email="admin@college.edu">🛡️ Facility Admin</button>
+          <button type="button" class="portal-tab-btn" data-role="staff" data-email="ramesh.maintenance@college.edu">🔧 Technician</button>
+        </div>
+
         <!-- Alert Notification -->
         <div id="loginAlertBox" class="form-alert"></div>
 
@@ -123,6 +130,25 @@
       // Password toggle
       const passwordInput = document.getElementById("loginPassword");
       const toggleBtn = document.getElementById("togglePasswordBtn");
+      const emailInput = document.getElementById("loginEmail");
+
+      // Portal Role Tab Switcher
+      const tabBtns = document.querySelectorAll(".portal-tab-btn");
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          tabBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          emailInput.value = btn.dataset.email;
+          passwordInput.value = "password123";
+        });
+      });
+
+      // Default initial role fill
+      if (!localStorage.getItem("cims_saved_email")) {
+        emailInput.value = "aarav.student@college.edu";
+        passwordInput.value = "password123";
+      }
+
       if (toggleBtn && passwordInput) {
         toggleBtn.addEventListener("click", () => {
           const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
