@@ -10,8 +10,8 @@ const firebaseConfig = {
   projectId: "cims-campus",
   storageBucket: "cims-campus.firebasestorage.app",
   messagingSenderId: "100493853948",
-  appId: "1:100493853948:web:9f7e141c62f001b9c3c379",
-  measurementId: "G-4R00H1LHBN"
+  appId: "1:100493853948:web:3301414b65870bd4c3c379",
+  measurementId: "G-X1XQH1QSRJ"
 };
 
 // Export to browser window

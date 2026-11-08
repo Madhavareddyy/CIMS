@@ -70,10 +70,20 @@ class CIMSAuthService {
           err.code === "auth/configuration-not-found" || 
           err.message?.includes("configuration-not-found") ||
           err.code === "auth/api-key-not-valid" ||
-          err.code === "auth/operation-not-allowed"
+          err.code === "auth/invalid-api-key" ||
+          err.code === "auth/operation-not-allowed" ||
+          err.code === "auth/project-not-found" ||
+          err.code === "auth/user-not-found"
         ) {
-          console.warn("Firebase Auth not yet enabled in Console; proceeding with institutional local authentication.");
-          return await this.loginLocally(email, password);
+          console.warn("Falling back to institutional local database check...");
+          try {
+            return await this.loginLocally(email, password);
+          } catch (localErr) {
+            if (err.code === "auth/user-not-found") {
+              throw new Error("No registered account found with this email address.");
+            }
+            throw localErr;
+          }
         }
 
         let msg = "Invalid email or password.";
@@ -156,7 +166,11 @@ class CIMSAuthService {
           err.code === "auth/configuration-not-found" || 
           err.message?.includes("configuration-not-found") ||
           err.code === "auth/api-key-not-valid" ||
-          err.code === "auth/operation-not-allowed"
+          err.code === "auth/invalid-api-key" ||
+          err.code === "auth/operation-not-allowed" ||
+          err.code === "auth/project-not-found" ||
+          err.message?.includes("api-key-not-valid") ||
+          err.message?.includes("API key")
         ) {
           console.warn("Firebase Auth not yet active in Console. Saving student account into institutional database.");
           return await this.registerStudentLocally({ fullName, email, password, studentId, department, phone });
