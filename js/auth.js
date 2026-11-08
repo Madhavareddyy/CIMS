@@ -71,6 +71,8 @@ class CIMSAuthService {
           msg = "Incorrect email address or password.";
         } else if (err.code === "auth/too-many-requests") {
           msg = "Too many failed attempts. Please try again later.";
+        } else if (err.code === "auth/api-key-not-valid" || err.message?.includes("api-key-not-valid")) {
+          msg = "Firebase API Key is not yet active. Please click 'Authentication -> Get started' in your Firebase Console.";
         } else if (err.message) {
           msg = err.message;
         }
@@ -140,6 +142,8 @@ class CIMSAuthService {
           msg = "An account with this email address already exists.";
         } else if (err.code === "auth/weak-password") {
           msg = "Password should be at least 6 characters.";
+        } else if (err.code === "auth/api-key-not-valid" || err.message?.includes("api-key-not-valid")) {
+          msg = "Firebase API Key is not yet active or copied incorrectly. Please ensure you clicked 'Authentication -> Get started' in your Firebase Console.";
         } else if (err.message) {
           msg = err.message;
         }
