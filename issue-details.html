@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Issue Details - CIMS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>CIMS</h1>
+          <span id="sidebarRoleLabel">Facility Portal</span>
+        </div>
+      </div>
+
+      <div class="sidebar-content">
+        <div class="nav-section-title">Navigation</div>
+        <ul class="sidebar-nav" id="detailsDynamicSidebarNav">
+          <!-- Populated dynamically according to user role -->
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar auth-user-avatar">U</div>
+          <div class="user-info">
+            <div class="user-name auth-user-name">Loading...</div>
+            <div class="user-role auth-user-role">User</div>
+          </div>
+          <button class="btn-logout" title="Sign Out" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-toggle" aria-label="Toggle navigation">
+            <svg style="width:24px;height:24px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="header-title">
+            <h2 id="issueCodeTitle">Issue Details</h2>
+            <p>Classroom Maintenance Ticket &bull; Inspection & Status History</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="system-status-indicator"></div>
+
+          <!-- Notification Bell -->
+          <div class="notification-bell-container">
+            <button class="btn-icon" id="notifBellBtn" title="View Notifications">
+              <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span class="badge-count" id="notifBadge" style="display:none;">0</span>
+            </button>
+            <div class="notification-panel" id="notifPanel">
+              <div class="notification-header">
+                <h4>Notifications</h4>
+                <button id="markAllReadBtn" style="background:none;border:none;color:var(--color-primary);font-size:12px;font-weight:600;cursor:pointer;">Mark all read</button>
+              </div>
+              <div class="notification-list" id="notifList"></div>
+            </div>
+          </div>
+
+          <button onclick="history.back()" class="btn btn-secondary btn-sm">
+            &larr; Back
+          </button>
+        </div>
+      </header>
+
+      <main class="content-body" id="issueDetailsContent">
+        <div class="issue-grid">
+          <!-- Left Column: Core Issue Information & Activity History -->
+          <div>
+            <!-- Overview Card -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Classroom Issue Overview</h3>
+                  <p class="card-subtitle">Detailed ticket specifications and maintenance findings</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span id="issuePriorityPill"></span>
+                  <span id="issueStatusBadge"></span>
+                </div>
+              </div>
+
+              <div class="form-row" style="margin-bottom:16px;">
+                <div class="detail-block">
+                  <div class="detail-label">Issue Category</div>
+                  <div class="detail-value" id="issueCategory">-</div>
+                </div>
+                <div class="detail-block">
+                  <div class="detail-label">Classroom / Location</div>
+                  <div class="detail-value" id="issueClassroom">-</div>
+                </div>
+              </div>
+
+              <div class="form-row" style="margin-bottom:16px;">
+                <div class="detail-block">
+                  <div class="detail-label">Reported By</div>
+                  <div class="detail-value" id="issueReporter">-</div>
+                </div>
+                <div class="detail-block">
+                  <div class="detail-label">Reported Timestamp</div>
+                  <div class="detail-value" id="issueDate">-</div>
+                </div>
+              </div>
+
+              <div class="detail-block">
+                <div class="detail-label">Assigned Technician</div>
+                <div class="detail-value" id="issueAssignedStaff">Unassigned</div>
+              </div>
+
+              <div class="detail-block">
+                <div class="detail-label">Problem Description</div>
+                <div class="detail-description" id="issueDescription">Loading...</div>
+              </div>
+
+              <div class="detail-block" style="margin-top:20px;">
+                <div class="detail-label">Maintenance Resolution Notes</div>
+                <div class="detail-description" id="issueResolutionNotes" style="background:#fff;border:1px solid #cbd5e1;">
+                  No resolution notes submitted yet.
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity Logs Timeline Card -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Activity & Audit Timeline</h3>
+                  <p class="card-subtitle">Immutable log of status transitions and assignments</p>
+                </div>
+              </div>
+              <div class="timeline" id="issueTimeline">
+                <p class="text-muted" style="font-size:13px;">Loading audit trail...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Role Action Panel -->
+          <div>
+            <div id="roleActionsContainer">
+              <div class="card">
+                <p class="text-muted" style="font-size:14px;">Loading action panel...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs (Compat via CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <!-- Optional Custom Firebase Configuration -->
+  <script src="js/firebase-config.js" onerror="/* Custom config optional */"></script>
+
+  <!-- CIMS Modules -->
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/issues.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const currentUser = window.CIMS.auth.checkAuth(["student", "admin", "staff"]);
+      if (!currentUser) return;
+
+      // Populate Role-Specific Sidebar Links
+      const navContainer = document.getElementById("detailsDynamicSidebarNav");
+      const label = document.getElementById("sidebarRoleLabel");
+
+      if (currentUser.role === "student") {
+        if (label) label.textContent = "Student Portal";
+        navContainer.innerHTML = `
+          <li class="nav-item"><a href="student-dashboard.html"><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="report-issue.html"><span>Report New Issue</span></a></li>
+          <li class="nav-item"><a href="my-issues.html"><span>My Complaints</span></a></li>
+          <li class="nav-item"><a href="profile.html"><span>My Profile</span></a></li>
+        `;
+      } else if (currentUser.role === "admin") {
+        if (label) label.textContent = "Admin Portal";
+        navContainer.innerHTML = `
+          <li class="nav-item"><a href="admin-dashboard.html"><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="manage-issues.html"><span>All Issues</span></a></li>
+          <li class="nav-item"><a href="manage-staff.html"><span>Staff Management</span></a></li>
+          <li class="nav-item"><a href="reports.html"><span>Reports & Analytics</span></a></li>
+          <li class="nav-item"><a href="profile.html"><span>My Profile</span></a></li>
+        `;
+      } else if (currentUser.role === "staff") {
+        if (label) label.textContent = "Staff Portal";
+        navContainer.innerHTML = `
+          <li class="nav-item"><a href="staff-dashboard.html"><span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="assigned-tasks.html"><span>Assigned Tasks</span></a></li>
+          <li class="nav-item"><a href="profile.html"><span>My Profile</span></a></li>
+        `;
+      }
+
+      await window.CIMS.issues.loadIssueDetailsPage(currentUser);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Classroom Issue Management System (CIMS)</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/forms.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <h1 class="auth-title">CIMS Portal</h1>
+        <p class="auth-subtitle">Classroom Issue Management System &bull; Campus Facility Desk</p>
+      </div>
+
+      <div class="auth-body">
+        <!-- Alert Notification -->
+        <div id="loginAlertBox" class="form-alert"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Institutional Email Address <span class="required">*</span></label>
+            <input type="email" id="loginEmail" class="form-control" placeholder="e.g. yourname@college.edu" required autocomplete="email">
+            <div class="invalid-feedback">Please enter a valid email address.</div>
+          </div>
+
+          <div class="form-group">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="form-label" for="loginPassword" style="margin-bottom:0;">Password <span class="required">*</span></label>
+              <a href="javascript:void(0)" id="btnForgotPassword" style="font-size:12px;color:var(--color-primary);text-decoration:none;font-weight:600;">Forgot Password?</a>
+            </div>
+            <div class="password-input-wrapper">
+              <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" class="btn-toggle-password" id="togglePasswordBtn" title="Toggle password visibility">
+                <svg id="eyeIcon" style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+            </div>
+            <div class="invalid-feedback">Password is required.</div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:13px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--color-text-muted);">
+              <input type="checkbox" id="rememberMeCheckbox" style="cursor:pointer;">
+              <span>Remember my email</span>
+            </label>
+          </div>
+
+          <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-block" style="padding:12px;font-size:15px;">
+            Sign In to CIMS
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-footer">
+        <div>New student? <a href="register.html">Register for an account</a></div>
+        <div style="margin-top:8px;font-size:11px;color:var(--color-text-light);">
+          Campus Facility & Infrastructure Services &bull; <a href="javascript:void(0)" onclick="window.CIMS.utils.showCloudConfigModal()" style="color:var(--color-text-light);text-decoration:underline;">Cloud Database Settings</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password Reset Modal -->
+  <div class="modal-backdrop" id="forgotPasswordModal">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header">
+        <h3>Reset Password</h3>
+        <button class="modal-close" id="btnCloseForgotModal">&times;</button>
+      </div>
+      <form id="forgotPasswordForm">
+        <div class="modal-body">
+          <p style="font-size:13px;color:var(--color-navy-muted);margin-bottom:16px;">
+            Enter your institutional email address. You will receive instructions to reset your account password.
+          </p>
+          <div id="forgotAlertBox" class="form-alert"></div>
+          <div class="form-group">
+            <label class="form-label" for="forgotEmail">Institutional Email <span class="required">*</span></label>
+            <input type="email" id="forgotEmail" class="form-control" placeholder="e.g. yourname@college.edu" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelForgot">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitForgot">Send Reset Instructions</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs (Compat via CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <!-- Optional Custom Firebase Configuration File -->
+  <script src="js/firebase-config.js" onerror="/* Optional custom config file */"></script>
+
+  <!-- CIMS Core Modules -->
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // If session exists, auto redirect
+      const existingUser = window.CIMS.auth.getCurrentUser();
+      if (existingUser) {
+        window.CIMS.auth.redirectToDashboard(existingUser.role);
+        return;
+      }
+
+      // Password toggle
+      const passwordInput = document.getElementById("loginPassword");
+      const toggleBtn = document.getElementById("togglePasswordBtn");
+      if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener("click", () => {
+          const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+          passwordInput.setAttribute("type", type);
+        });
+      }
+
+      // Remember me retrieval
+      const emailInput = document.getElementById("loginEmail");
+      const rememberCheckbox = document.getElementById("rememberMeCheckbox");
+      const savedEmail = localStorage.getItem("cims_saved_email");
+      if (savedEmail && emailInput) {
+        emailInput.value = savedEmail;
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+      }
+
+      // Login Submission
+      const form = document.getElementById("loginForm");
+      const alertBox = document.getElementById("loginAlertBox");
+      const submitBtn = document.getElementById("btnLoginSubmit");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        alertBox.className = "form-alert";
+        alertBox.textContent = "";
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+          alertBox.className = "form-alert alert-danger show";
+          alertBox.textContent = "Please provide both your email address and password.";
+          return;
+        }
+
+        // Save email if remember me checked
+        if (rememberCheckbox && rememberCheckbox.checked) {
+          localStorage.setItem("cims_saved_email", email);
+        } else {
+          localStorage.removeItem("cims_saved_email");
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading-spinner"></span> Authenticating...';
+
+        try {
+          const user = await window.CIMS.auth.login(email, password);
+          window.CIMS.utils.showToast(`Signed in successfully as ${user.fullName}`, "success");
+          setTimeout(() => {
+            window.CIMS.auth.redirectToDashboard(user.role);
+          }, 350);
+        } catch (err) {
+          alertBox.className = "form-alert alert-danger show";
+          alertBox.textContent = err.message || "Authentication failed.";
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = "Sign In to CIMS";
+        }
+      });
+
+      // Forgot Password Modal Handlers
+      const forgotModal = document.getElementById("forgotPasswordModal");
+      const btnForgot = document.getElementById("btnForgotPassword");
+      const btnCloseForgot = document.getElementById("btnCloseForgotModal");
+      const btnCancelForgot = document.getElementById("btnCancelForgot");
+      const forgotForm = document.getElementById("forgotPasswordForm");
+      const forgotAlert = document.getElementById("forgotAlertBox");
+
+      if (btnForgot && forgotModal) {
+        btnForgot.onclick = () => {
+          forgotModal.classList.add("show");
+          document.getElementById("forgotEmail").value = emailInput.value.trim();
+        };
+      }
+
+      const hideForgot = () => {
+        if (forgotModal) forgotModal.classList.remove("show");
+        if (forgotAlert) forgotAlert.className = "form-alert";
+      };
+
+      if (btnCloseForgot) btnCloseForgot.onclick = hideForgot;
+      if (btnCancelForgot) btnCancelForgot.onclick = hideForgot;
+
+      if (forgotForm) {
+        forgotForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const fEmail = document.getElementById("forgotEmail").value.trim();
+          try {
+            const msg = await window.CIMS.auth.resetPassword(fEmail);
+            forgotAlert.className = "form-alert alert-success show";
+            forgotAlert.textContent = msg;
+            setTimeout(hideForgot, 3000);
+          } catch (err) {
+            forgotAlert.className = "form-alert alert-danger show";
+            forgotAlert.textContent = err.message;
+          }
+        };
+      }
+    });
+  </script>
+</body>
+</html>

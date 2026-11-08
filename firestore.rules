@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Role-Based Access Control (RBAC)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && getUserData().role == 'staff';
+    }
+
+    function isStudent() {
+      return isAuthenticated() && getUserData().role == 'student';
+    }
+
+    // USERS COLLECTION
+    // Rules: Users can read their own profile; Admins can read all users;
+    // Public registration can ONLY create role 'student' (prevents privilege escalation);
+    // Role changes are restricted to Admins.
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isStaff());
+      
+      // Self-registration is strictly locked to student role
+      allow create: if isAuthenticated() && isOwner(userId) && 
+        (
+          request.resource.data.role == 'student' ||
+          (isAdmin() && request.resource.data.role in ['student', 'staff', 'admin'])
+        );
+
+      // Users can update phone & department, but NOT escalate their role
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (isOwner(userId) && request.resource.data.role == resource.data.role)
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ISSUES COLLECTION
+    // Rules:
+    // - Students can ONLY read issues they reported
+    // - Staff can ONLY read issues assigned to them
+    // - Admins can read and manage all issues
+    match /issues/{issueId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        (isStaff() && resource.data.assignedStaffId == request.auth.uid)
+      );
+
+      // Students can create tickets; Must own ticket and start as 'pending'
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        (
+          isStudent() &&
+          request.resource.data.studentId == request.auth.uid &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.assignedStaffId == null
+        )
+      );
+
+      // Updates:
+      // - Admins can update any field (assignment, priority, status)
+      // - Staff assigned can ONLY transition status (to in_progress / completed) and update resolutionNotes
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (
+          isStaff() &&
+          resource.data.assignedStaffId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolutionNotes', 'updatedAt']) &&
+          request.resource.data.status in ['in_progress', 'completed']
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // ACTIVITY LOGS COLLECTION (Immutable Audit Trail)
+    match /activityLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Logs are strictly append-only
+    }
+
+    // NOTIFICATIONS COLLECTION
+    match /notifications/{notifId} {
+      // Users can only read and update their own notifications
+      allow read, update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+  }
+}

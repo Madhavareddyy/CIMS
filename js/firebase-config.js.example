@@ -1,0 +1,31 @@
+/**
+ * CLASSROOM ISSUE MANAGEMENT SYSTEM (CIMS)
+ * Firebase Configuration Template
+ *
+ * HOW TO USE:
+ * 1. Go to the Firebase Console: https://console.firebase.google.com/
+ * 2. Create a new project (e.g., "cims-college-system").
+ * 3. In Project Overview, click the Web icon (</>) to register a web app.
+ * 4. Enable Firebase Authentication:
+ *    - Go to Authentication -> Sign-in method.
+ *    - Enable "Email/Password".
+ * 5. Enable Cloud Firestore:
+ *    - Go to Firestore Database -> Create database.
+ *    - Start in Production mode or Test mode (apply firestore.rules from this repo).
+ * 6. Copy your Firebase SDK config values below.
+ * 7. Duplicate this file and rename it to: js/firebase-config.js
+ */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyYOUR_ACTUAL_API_KEY_HERE",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef1234567890"
+};
+
+// Check if running in browser window and export config
+if (typeof window !== "undefined") {
+  window.FIREBASE_CONFIG = firebaseConfig;
+}
