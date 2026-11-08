@@ -66,13 +66,21 @@ class CIMSAuthService {
         return userObj;
       } catch (err) {
         console.error("Firebase Auth Error:", err);
+        if (
+          err.code === "auth/configuration-not-found" || 
+          err.message?.includes("configuration-not-found") ||
+          err.code === "auth/api-key-not-valid" ||
+          err.code === "auth/operation-not-allowed"
+        ) {
+          console.warn("Firebase Auth not yet enabled in Console; proceeding with institutional local authentication.");
+          return await this.loginLocally(email, password);
+        }
+
         let msg = "Invalid email or password.";
         if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
           msg = "Incorrect email address or password.";
         } else if (err.code === "auth/too-many-requests") {
           msg = "Too many failed attempts. Please try again later.";
-        } else if (err.code === "auth/api-key-not-valid" || err.message?.includes("api-key-not-valid")) {
-          msg = "Firebase API Key is not yet active. Please click 'Authentication -> Get started' in your Firebase Console.";
         } else if (err.message) {
           msg = err.message;
         }
@@ -81,6 +89,11 @@ class CIMSAuthService {
     }
 
     // 2. Institutional Database Authentication
+    return await this.loginLocally(email, password);
+  }
+
+  async loginLocally(email, password) {
+    const emailTrimmed = email.trim().toLowerCase();
     const users = await window.CIMS.db.getUsers();
     const user = users.find(u => u.email.toLowerCase() === emailTrimmed);
 
@@ -137,13 +150,23 @@ class CIMSAuthService {
         this.setCurrentUser(studentProfile);
         return studentProfile;
       } catch (err) {
+        console.warn("Cloud registration notice:", err);
+        // Resilient fallback if Firebase Authentication has not been enabled in console yet
+        if (
+          err.code === "auth/configuration-not-found" || 
+          err.message?.includes("configuration-not-found") ||
+          err.code === "auth/api-key-not-valid" ||
+          err.code === "auth/operation-not-allowed"
+        ) {
+          console.warn("Firebase Auth not yet active in Console. Saving student account into institutional database.");
+          return await this.registerStudentLocally({ fullName, email, password, studentId, department, phone });
+        }
+
         let msg = "Registration failed.";
         if (err.code === "auth/email-already-in-use") {
           msg = "An account with this email address already exists.";
         } else if (err.code === "auth/weak-password") {
           msg = "Password should be at least 6 characters.";
-        } else if (err.code === "auth/api-key-not-valid" || err.message?.includes("api-key-not-valid")) {
-          msg = "Firebase API Key is not yet active or copied incorrectly. Please ensure you clicked 'Authentication -> Get started' in your Firebase Console.";
         } else if (err.message) {
           msg = err.message;
         }
@@ -152,6 +175,11 @@ class CIMSAuthService {
     }
 
     // 2. Local Database Registration
+    return await this.registerStudentLocally({ fullName, email, password, studentId, department, phone });
+  }
+
+  async registerStudentLocally({ fullName, email, password, studentId, department, phone }) {
+    const emailTrimmed = email.trim().toLowerCase();
     const users = await window.CIMS.db.getUsers();
     if (users.some(u => u.email.toLowerCase() === emailTrimmed)) {
       throw new Error("An account with this email address already exists.");
