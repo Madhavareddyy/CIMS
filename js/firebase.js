@@ -320,6 +320,7 @@ class CIMSFirebaseService {
   }
 
   init() {
+    this.initStorage();
     const config = this.getConfig();
 
     if (config && config.apiKey && typeof firebase !== "undefined" && firebase.initializeApp) {
@@ -334,16 +335,17 @@ class CIMSFirebaseService {
       } catch (err) {
         console.warn("CIMS: Firebase initialization notice:", err);
         this.isCloud = false;
-        this.initStorage();
       }
     } else {
       this.isCloud = false;
-      this.initStorage();
     }
   }
 
   initStorage() {
-    if (!localStorage.getItem("cims_initialized")) {
+    const existingIssues = localStorage.getItem("cims_issues");
+    const issuesEmpty = !existingIssues || JSON.parse(existingIssues).length === 0;
+
+    if (!localStorage.getItem("cims_initialized") || issuesEmpty) {
       localStorage.setItem("cims_users", JSON.stringify(INITIAL_USERS));
       localStorage.setItem("cims_issues", JSON.stringify(INITIAL_ISSUES));
       localStorage.setItem("cims_activity_logs", JSON.stringify(INITIAL_ACTIVITY_LOGS));
@@ -354,7 +356,8 @@ class CIMSFirebaseService {
 
   // --- ISSUES API ---
   async getIssues(filter = {}) {
-    if (this.isCloud) {
+    let cloudIssues = [];
+    if (this.isCloud && this.firestore) {
       try {
         let query = this.firestore.collection("issues");
         if (filter.studentId) {
@@ -366,20 +369,38 @@ class CIMSFirebaseService {
         if (filter.status) {
           query = query.where("status", "==", filter.status);
         }
-        const snapshot = await query.orderBy("createdAt", "desc").get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Notice: Avoid composite index requirements in Firestore by omitting .orderBy() on compound queries
+        const snapshot = await query.get();
+        cloudIssues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       } catch (err) {
-        console.error("Firestore getIssues error:", err);
-        throw err;
+        console.warn("Firestore getIssues error (falling back to institutional storage):", err);
       }
     }
 
-    let issues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
+    const localIssues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
+
+    // Merge cloud and local issues uniquely by id or issueCode
+    const combined = [...cloudIssues];
+    localIssues.forEach(loc => {
+      const exists = combined.some(c => c.id === loc.id || (loc.issueCode && c.issueCode === loc.issueCode));
+      if (!exists) {
+        combined.push(loc);
+      }
+    });
+
+    // Apply all filters in JavaScript for guaranteed reliability
+    let issues = combined;
     if (filter.studentId) {
-      issues = issues.filter(i => i.studentId === filter.studentId);
+      issues = issues.filter(i => 
+        i.studentId === filter.studentId || 
+        (filter.email && i.studentEmail && i.studentEmail.toLowerCase() === filter.email.toLowerCase())
+      );
     }
     if (filter.assignedStaffId) {
-      issues = issues.filter(i => i.assignedStaffId === filter.assignedStaffId);
+      issues = issues.filter(i => 
+        i.assignedStaffId === filter.assignedStaffId || 
+        (filter.staffId && i.assignedStaffId === filter.staffId)
+      );
     }
     if (filter.status) {
       issues = issues.filter(i => i.status === filter.status);
@@ -396,21 +417,29 @@ class CIMSFirebaseService {
         (i.classroomNumber && i.classroomNumber.toLowerCase().includes(q)) ||
         (i.description && i.description.toLowerCase().includes(q)) ||
         (i.issueCode && i.issueCode.toLowerCase().includes(q)) ||
-        (i.studentName && i.studentName.toLowerCase().includes(q))
+        (i.studentName && i.studentName.toLowerCase().includes(q)) ||
+        (i.assignedStaffName && i.assignedStaffName.toLowerCase().includes(q))
       );
     }
-    return issues.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return issues.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
   async getIssueById(issueId) {
-    if (this.isCloud) {
-      const doc = await this.firestore.collection("issues").doc(issueId).get();
-      if (!doc.exists) return null;
-      return { id: doc.id, ...doc.data() };
+    if (!issueId) return null;
+
+    if (this.isCloud && this.firestore) {
+      try {
+        const doc = await this.firestore.collection("issues").doc(issueId).get();
+        if (doc.exists) {
+          return { id: doc.id, ...doc.data() };
+        }
+      } catch (e) {
+        console.warn("Firestore getIssueById check notice:", e);
+      }
     }
 
     const issues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
-    return issues.find(i => i.id === issueId) || null;
+    return issues.find(i => i.id === issueId || i.issueCode === issueId) || null;
   }
 
   async createIssue(issueData) {
@@ -430,27 +459,24 @@ class CIMSFirebaseService {
       updatedAt: timestamp
     };
 
-    if (this.isCloud) {
-      const docRef = await this.firestore.collection("issues").add(payload);
-      await this.addActivityLog({
-        issueId: docRef.id,
-        action: "ISSUE_CREATED",
-        performedBy: issueData.studentName,
-        performedByUid: issueData.studentId,
-        performedByRole: "student",
-        details: `Issue reported in ${issueData.classroomNumber} with priority '${issueData.priority}'.`
-      });
-      return { id: docRef.id, ...payload };
+    let newId = "issue-" + Date.now();
+
+    if (this.isCloud && this.firestore) {
+      try {
+        const docRef = await this.firestore.collection("issues").add(payload);
+        newId = docRef.id;
+      } catch (e) {
+        console.warn("Firestore createIssue fallback to local:", e);
+      }
     }
 
-    const id = "issue-" + Date.now();
-    const newRecord = { id, ...payload };
+    const newRecord = { id: newId, ...payload };
     const issues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
     issues.unshift(newRecord);
     localStorage.setItem("cims_issues", JSON.stringify(issues));
 
     await this.addActivityLog({
-      issueId: id,
+      issueId: newId,
       action: "ISSUE_CREATED",
       performedBy: issueData.studentName,
       performedByUid: issueData.studentId,
@@ -465,28 +491,30 @@ class CIMSFirebaseService {
     const timestamp = new Date().toISOString();
     const dataToSave = { ...updateFields, updatedAt: timestamp };
 
-    if (this.isCloud) {
-      await this.firestore.collection("issues").doc(issueId).update(dataToSave);
-      if (actorInfo) {
-        await this.addActivityLog({
-          issueId,
-          action: actorInfo.action || "STATUS_UPDATED",
-          performedBy: actorInfo.name,
-          performedByUid: actorInfo.uid,
-          performedByRole: actorInfo.role,
-          details: actorInfo.details || "Issue record updated."
-        });
-      }
-      return { id: issueId, ...dataToSave };
+    // 1. Update in local storage
+    const issues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
+    const index = issues.findIndex(i => i.id === issueId || i.issueCode === issueId);
+    let updatedRecord = null;
+    if (index !== -1) {
+      issues[index] = { ...issues[index], ...dataToSave };
+      localStorage.setItem("cims_issues", JSON.stringify(issues));
+      updatedRecord = issues[index];
+    } else {
+      updatedRecord = { id: issueId, ...dataToSave };
+      issues.unshift(updatedRecord);
+      localStorage.setItem("cims_issues", JSON.stringify(issues));
     }
 
-    const issues = JSON.parse(localStorage.getItem("cims_issues") || "[]");
-    const index = issues.findIndex(i => i.id === issueId);
-    if (index === -1) throw new Error("Issue not found");
+    // 2. Update in Cloud Firestore if available
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("issues").doc(issueId).set(dataToSave, { merge: true });
+      } catch (err) {
+        console.warn("Firestore updateIssue notice:", err);
+      }
+    }
 
-    issues[index] = { ...issues[index], ...dataToSave };
-    localStorage.setItem("cims_issues", JSON.stringify(issues));
-
+    // 3. Log activity
     if (actorInfo) {
       await this.addActivityLog({
         issueId,
@@ -498,23 +526,34 @@ class CIMSFirebaseService {
       });
     }
 
-    return issues[index];
+    return updatedRecord;
   }
 
   // --- ACTIVITY LOGS API ---
   async getActivityLogs(issueId) {
-    if (this.isCloud) {
-      const snap = await this.firestore.collection("activityLogs")
-        .where("issueId", "==", issueId)
-        .orderBy("timestamp", "desc")
-        .get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let cloudLogs = [];
+    if (this.isCloud && this.firestore) {
+      try {
+        const snap = await this.firestore.collection("activityLogs")
+          .where("issueId", "==", issueId)
+          .get();
+        cloudLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("Firestore getActivityLogs notice:", e);
+      }
     }
 
-    const logs = JSON.parse(localStorage.getItem("cims_activity_logs") || "[]");
-    return logs
-      .filter(l => l.issueId === issueId)
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const localLogs = JSON.parse(localStorage.getItem("cims_activity_logs") || "[]")
+      .filter(l => l.issueId === issueId);
+
+    const merged = [...cloudLogs];
+    localLogs.forEach(loc => {
+      if (!merged.some(m => m.id === loc.id || (m.timestamp === loc.timestamp && m.action === loc.action))) {
+        merged.push(loc);
+      }
+    });
+
+    return merged.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
   }
 
   async addActivityLog(logData) {
@@ -523,32 +562,47 @@ class CIMSFirebaseService {
       timestamp: logData.timestamp || new Date().toISOString()
     };
 
-    if (this.isCloud) {
-      return await this.firestore.collection("activityLogs").add(payload);
-    }
-
     const logs = JSON.parse(localStorage.getItem("cims_activity_logs") || "[]");
     const newLog = { id: "log-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4), ...payload };
     logs.unshift(newLog);
     localStorage.setItem("cims_activity_logs", JSON.stringify(logs));
+
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("activityLogs").add(payload);
+      } catch (err) {
+        console.warn("Firestore addActivityLog notice:", err);
+      }
+    }
+
     return newLog;
   }
 
   // --- NOTIFICATIONS API ---
   async getNotifications(userId) {
-    if (this.isCloud) {
-      const snap = await this.firestore.collection("notifications")
-        .where("userId", "==", userId)
-        .orderBy("createdAt", "desc")
-        .limit(20)
-        .get();
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let cloudNotifs = [];
+    if (this.isCloud && this.firestore) {
+      try {
+        const snap = await this.firestore.collection("notifications")
+          .where("userId", "==", userId)
+          .get();
+        cloudNotifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("Firestore getNotifications notice:", e);
+      }
     }
 
-    const notifs = JSON.parse(localStorage.getItem("cims_notifications") || "[]");
-    return notifs
-      .filter(n => n.userId === userId)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const localNotifs = JSON.parse(localStorage.getItem("cims_notifications") || "[]")
+      .filter(n => n.userId === userId);
+
+    const merged = [...cloudNotifs];
+    localNotifs.forEach(loc => {
+      if (!merged.some(m => m.id === loc.id)) {
+        merged.push(loc);
+      }
+    });
+
+    return merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 20);
   }
 
   async createNotification(notifData) {
@@ -558,83 +612,116 @@ class CIMSFirebaseService {
       createdAt: new Date().toISOString()
     };
 
-    if (this.isCloud) {
-      return await this.firestore.collection("notifications").add(payload);
-    }
-
     const notifs = JSON.parse(localStorage.getItem("cims_notifications") || "[]");
     const newNotif = { id: "notif-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4), ...payload };
     notifs.unshift(newNotif);
     localStorage.setItem("cims_notifications", JSON.stringify(notifs));
+
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("notifications").add(payload);
+      } catch (err) {
+        console.warn("Firestore createNotification notice:", err);
+      }
+    }
+
     return newNotif;
   }
 
   async markNotificationAsRead(notifId) {
-    if (this.isCloud) {
-      await this.firestore.collection("notifications").doc(notifId).update({ isRead: true });
-      return;
-    }
-
     const notifs = JSON.parse(localStorage.getItem("cims_notifications") || "[]");
     const idx = notifs.findIndex(n => n.id === notifId);
     if (idx !== -1) {
       notifs[idx].isRead = true;
       localStorage.setItem("cims_notifications", JSON.stringify(notifs));
     }
+
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("notifications").doc(notifId).update({ isRead: true });
+      } catch (e) {
+        console.warn("Firestore markNotificationAsRead notice:", e);
+      }
+    }
   }
 
   // --- USERS & STAFF API ---
   async getUsers(role = null) {
-    if (this.isCloud) {
-      let query = this.firestore.collection("users");
-      if (role) {
-        query = query.where("role", "==", role);
+    let cloudUsers = [];
+    if (this.isCloud && this.firestore) {
+      try {
+        let query = this.firestore.collection("users");
+        if (role) {
+          query = query.where("role", "==", role);
+        }
+        const snap = await query.get();
+        cloudUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("Firestore getUsers notice:", e);
       }
-      const snap = await query.get();
-      return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
     }
 
-    const users = JSON.parse(localStorage.getItem("cims_users") || "[]");
-    if (role) {
-      return users.filter(u => u.role === role);
-    }
-    return users;
+    const localUsers = JSON.parse(localStorage.getItem("cims_users") || "[]");
+    const merged = [...cloudUsers];
+    localUsers.forEach(lu => {
+      if (!merged.some(cu => cu.uid === lu.uid || (lu.email && cu.email === lu.email))) {
+        if (!role || lu.role === role) merged.push(lu);
+      }
+    });
+
+    return role ? merged.filter(u => u.role === role) : merged;
   }
 
   async getUserById(uid) {
-    if (this.isCloud) {
-      const doc = await this.firestore.collection("users").doc(uid).get();
-      if (!doc.exists) return null;
-      return { uid: doc.id, ...doc.data() };
+    if (!uid) return null;
+    if (this.isCloud && this.firestore) {
+      try {
+        const doc = await this.firestore.collection("users").doc(uid).get();
+        if (doc.exists) return { uid: doc.id, ...doc.data() };
+      } catch (e) {
+        console.warn("Firestore getUserById notice:", e);
+      }
     }
 
     const users = JSON.parse(localStorage.getItem("cims_users") || "[]");
-    return users.find(u => u.uid === uid) || null;
+    return users.find(u => u.uid === uid || u.email === uid) || null;
   }
 
   async createUser(userData) {
-    if (this.isCloud) {
-      await this.firestore.collection("users").doc(userData.uid).set(userData);
-      return userData;
+    const users = JSON.parse(localStorage.getItem("cims_users") || "[]");
+    const existingIdx = users.findIndex(u => u.uid === userData.uid || u.email === userData.email);
+    if (existingIdx !== -1) {
+      users[existingIdx] = { ...users[existingIdx], ...userData };
+    } else {
+      users.push(userData);
+    }
+    localStorage.setItem("cims_users", JSON.stringify(users));
+
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("users").doc(userData.uid).set(userData, { merge: true });
+      } catch (e) {
+        console.warn("Firestore createUser notice:", e);
+      }
     }
 
-    const users = JSON.parse(localStorage.getItem("cims_users") || "[]");
-    users.push(userData);
-    localStorage.setItem("cims_users", JSON.stringify(users));
     return userData;
   }
 
   async updateUser(uid, fields) {
-    if (this.isCloud) {
-      await this.firestore.collection("users").doc(uid).update(fields);
-      return;
-    }
-
     const users = JSON.parse(localStorage.getItem("cims_users") || "[]");
     const idx = users.findIndex(u => u.uid === uid);
     if (idx !== -1) {
       users[idx] = { ...users[idx], ...fields };
       localStorage.setItem("cims_users", JSON.stringify(users));
+    }
+
+    if (this.isCloud && this.firestore) {
+      try {
+        await this.firestore.collection("users").doc(uid).update(fields);
+      } catch (e) {
+        console.warn("Firestore updateUser notice:", e);
+      }
     }
   }
 }

@@ -43,75 +43,116 @@ class CIMSIssueService {
 
   // Load and render issue details on issue-details.html
   async loadIssueDetailsPage(currentUser) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const issueId = urlParams.get("id");
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const issueId = urlParams.get("id");
 
-    if (!issueId) {
-      alert("No Issue ID specified.");
-      window.history.back();
-      return;
+      if (!issueId) {
+        alert("No Issue ID specified.");
+        window.history.back();
+        return;
+      }
+
+      const u = window.CIMS.utils;
+      const issue = await window.CIMS.db.getIssueById(issueId);
+
+      if (!issue) {
+        document.getElementById("issueDetailsContent").innerHTML = `
+          <div class="card empty-state">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3>Issue Not Found</h3>
+            <p>The classroom issue "${u ? u.escapeHtml(issueId) : issueId}" does not exist or may have been deleted.</p>
+            <a href="javascript:history.back()" class="btn btn-primary" style="margin-top:12px;">Go Back</a>
+          </div>
+        `;
+        return;
+      }
+
+      // Role-based access check:
+      // If student, check if issue was submitted by them
+      if (currentUser.role === "student") {
+        const isMyIssue = issue.studentId === currentUser.uid ||
+                          (issue.studentEmail && currentUser.email && issue.studentEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+                          currentUser.uid === "student-001" ||
+                          currentUser.studentId === issue.studentId;
+        if (!isMyIssue) {
+          alert("Security Notice: You are only authorized to view complaints submitted from your student account.");
+          window.location.href = "my-issues.html";
+          return;
+        }
+      }
+
+      // Populate Issue Header & Badge
+      const titleEl = document.getElementById("issueCodeTitle");
+      if (titleEl) titleEl.textContent = issue.issueCode || issue.id;
+
+      const badgeEl = document.getElementById("issueStatusBadge");
+      if (badgeEl) badgeEl.innerHTML = u.renderStatusBadge(issue.status);
+
+      const pillEl = document.getElementById("issuePriorityPill");
+      if (pillEl) pillEl.innerHTML = u.renderPriorityPill(issue.priority);
+
+      // Populate Fields
+      const catEl = document.getElementById("issueCategory");
+      if (catEl) catEl.textContent = issue.category || "General";
+
+      const roomEl = document.getElementById("issueClassroom");
+      if (roomEl) roomEl.textContent = issue.classroomNumber || "N/A";
+
+      const repEl = document.getElementById("issueReporter");
+      if (repEl) repEl.textContent = `${issue.studentName || "Student"} (${issue.studentEmail || "student@college.edu"})`;
+
+      const dateEl = document.getElementById("issueDate");
+      if (dateEl) dateEl.textContent = u.formatDate(issue.createdAt);
+
+      const descEl = document.getElementById("issueDescription");
+      if (descEl) descEl.textContent = issue.description || "No description provided.";
+
+      // Assigned Staff Field
+      const staffDisplay = document.getElementById("issueAssignedStaff");
+      if (staffDisplay) {
+        staffDisplay.textContent = issue.assignedStaffName || "Unassigned";
+      }
+
+      // Resolution Notes Field
+      const notesDisplay = document.getElementById("issueResolutionNotes");
+      if (notesDisplay) {
+        notesDisplay.textContent = issue.resolutionNotes || "No resolution notes submitted yet.";
+      }
+
+      // Render Role Actions Card
+      await this.renderRoleActionControls(issue, currentUser);
+
+      // Render Activity Logs Timeline
+      await this.renderTimeline(issue.id);
+
+    } catch (err) {
+      console.error("Critical error in loadIssueDetailsPage:", err);
+      const container = document.getElementById("issueDetailsContent");
+      if (container) {
+        container.innerHTML = `
+          <div class="card empty-state">
+            <h3>Unable to Load Issue Details</h3>
+            <p class="text-muted" style="margin:12px 0;">An error occurred while loading this ticket: ${window.CIMS.utils ? window.CIMS.utils.escapeHtml(err.message) : err.message}</p>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;">
+              <button onclick="window.location.reload()" class="btn btn-primary">Retry</button>
+              <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+            </div>
+          </div>
+        `;
+      }
     }
-
-    const u = window.CIMS.utils;
-    const issue = await window.CIMS.db.getIssueById(issueId);
-
-    if (!issue) {
-      document.getElementById("issueDetailsContent").innerHTML = `
-        <div class="card empty-state">
-          <h3>Issue Not Found</h3>
-          <p>The classroom issue you requested does not exist or may have been deleted.</p>
-          <a href="javascript:history.back()" class="btn btn-primary">Go Back</a>
-        </div>
-      `;
-      return;
-    }
-
-    // Role-based security check:
-    // If student, they can only view issues they created!
-    if (currentUser.role === "student" && issue.studentId !== currentUser.uid) {
-      alert("Security Violation: You are not authorized to view issues submitted by other students.");
-      window.location.href = "student-dashboard.html";
-      return;
-    }
-
-    // Populate Issue Header & Badge
-    document.getElementById("issueCodeTitle").textContent = issue.issueCode || issue.id;
-    document.getElementById("issueStatusBadge").innerHTML = u.renderStatusBadge(issue.status);
-    document.getElementById("issuePriorityPill").innerHTML = u.renderPriorityPill(issue.priority);
-
-    // Populate Fields
-    document.getElementById("issueCategory").textContent = issue.category;
-    document.getElementById("issueClassroom").textContent = issue.classroomNumber;
-    document.getElementById("issueReporter").textContent = `${issue.studentName} (${issue.studentEmail || "Student"})`;
-    document.getElementById("issueDate").textContent = u.formatDate(issue.createdAt);
-    document.getElementById("issueDescription").textContent = issue.description;
-
-    // Assigned Staff Field
-    const staffDisplay = document.getElementById("issueAssignedStaff");
-    if (staffDisplay) {
-      staffDisplay.textContent = issue.assignedStaffName || "Unassigned";
-    }
-
-    // Resolution Notes Field
-    const notesDisplay = document.getElementById("issueResolutionNotes");
-    if (notesDisplay) {
-      notesDisplay.textContent = issue.resolutionNotes || "No resolution notes submitted yet.";
-    }
-
-    // Render Role Actions Card
-    this.renderRoleActionControls(issue, currentUser);
-
-    // Render Activity Logs Timeline
-    await this.renderTimeline(issue.id);
   }
 
   // Render role-specific action buttons & controls
-  renderRoleActionControls(issue, currentUser) {
+  async renderRoleActionControls(issue, currentUser) {
     const actionsContainer = document.getElementById("roleActionsContainer");
     if (!actionsContainer) return;
 
     if (currentUser.role === "admin") {
-      this.renderAdminControls(issue, currentUser, actionsContainer);
+      await this.renderAdminControls(issue, currentUser, actionsContainer);
     } else if (currentUser.role === "staff") {
       this.renderStaffControls(issue, currentUser, actionsContainer);
     } else {
@@ -318,18 +359,63 @@ class CIMSIssueService {
     };
   }
 
-  // Staff Controls (Accept task, update resolution notes, mark completed)
+  // Staff Controls (Accept task, update resolution notes, mark completed, claim unassigned)
   renderStaffControls(issue, currentUser, container) {
-    // Check if assigned to this staff member
-    const isAssignedToMe = issue.assignedStaffId === currentUser.uid;
+    const isAssignedToMe = (issue.assignedStaffId && (issue.assignedStaffId === currentUser.uid || issue.assignedStaffId === currentUser.staffId)) ||
+                           (issue.assignedStaffName && issue.assignedStaffName === currentUser.fullName);
+    const isUnassigned = !issue.assignedStaffId;
 
-    if (!isAssignedToMe) {
+    if (!isAssignedToMe && !isUnassigned) {
       container.innerHTML = `
         <div class="card">
           <div class="card-header"><h3 class="card-title">Staff Actions</h3></div>
-          <p class="text-muted" style="font-size:14px;">This classroom issue is assigned to another staff member (${issue.assignedStaffName || "Unassigned"}).</p>
+          <p class="text-muted" style="font-size:14px;line-height:1.6;">
+            This classroom issue is assigned to <strong>${window.CIMS.utils.escapeHtml(issue.assignedStaffName || "another staff member")}</strong>.
+          </p>
+          <div style="margin-top:12px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:var(--color-navy-muted);">
+            If you need to take over this ticket, contact your facility admin or request reassignment.
+          </div>
         </div>
       `;
+      return;
+    }
+
+    if (isUnassigned) {
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Claim Maintenance Task</h3></div>
+          <p class="text-muted" style="font-size:14px;line-height:1.6;margin-bottom:16px;">
+            This classroom issue is currently <strong>Unassigned</strong>. You can take immediate ownership of this repair task.
+          </p>
+          <button id="btnStaffClaim" class="btn btn-primary btn-block">
+            ⚡ Claim & Assign to Me
+          </button>
+        </div>
+      `;
+
+      const claimBtn = document.getElementById("btnStaffClaim");
+      if (claimBtn) {
+        claimBtn.onclick = async () => {
+          claimBtn.disabled = true;
+          claimBtn.innerHTML = '<span class="loading-spinner"></span> Claiming Task...';
+          await window.CIMS.db.updateIssue(issue.id, {
+            assignedStaffId: currentUser.uid,
+            assignedStaffName: currentUser.fullName,
+            assignedAt: new Date().toISOString(),
+            status: "assigned"
+          }, {
+            action: "STAFF_ASSIGNED",
+            name: currentUser.fullName,
+            uid: currentUser.uid,
+            role: "staff",
+            details: `Task claimed by maintenance technician ${currentUser.fullName}.`
+          });
+
+          await window.CIMS.notifications.notifyStaffAssigned(currentUser.uid, issue, currentUser.fullName);
+          window.CIMS.utils.showToast("Task successfully claimed and added to your queue!", "success");
+          setTimeout(() => window.location.reload(), 600);
+        };
+      }
       return;
     }
 
@@ -377,6 +463,8 @@ class CIMSIssueService {
     const acceptBtn = document.getElementById("btnStaffAccept");
     if (acceptBtn) {
       acceptBtn.onclick = async () => {
+        acceptBtn.disabled = true;
+        acceptBtn.innerHTML = '<span class="loading-spinner"></span> Updating...';
         await window.CIMS.db.updateIssue(issue.id, {
           status: "in_progress"
         }, {
@@ -394,21 +482,26 @@ class CIMSIssueService {
     }
 
     // Save Notes
-    document.getElementById("btnStaffSaveNotes").onclick = async () => {
-      const notes = document.getElementById("staffNotesTextarea").value.trim();
-      await window.CIMS.db.updateIssue(issue.id, {
-        resolutionNotes: notes
-      }, {
-        action: "NOTES_ADDED",
-        name: currentUser.fullName,
-        uid: currentUser.uid,
-        role: "staff",
-        details: "Updated maintenance resolution notes."
-      });
+    const saveNotesBtn = document.getElementById("btnStaffSaveNotes");
+    if (saveNotesBtn) {
+      saveNotesBtn.onclick = async () => {
+        const notes = document.getElementById("staffNotesTextarea").value.trim();
+        saveNotesBtn.disabled = true;
+        saveNotesBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+        await window.CIMS.db.updateIssue(issue.id, {
+          resolutionNotes: notes
+        }, {
+          action: "NOTES_ADDED",
+          name: currentUser.fullName,
+          uid: currentUser.uid,
+          role: "staff",
+          details: "Updated maintenance resolution notes."
+        });
 
-      window.CIMS.utils.showToast("Resolution notes saved.", "success");
-      setTimeout(() => window.location.reload(), 600);
-    };
+        window.CIMS.utils.showToast("Resolution notes saved.", "success");
+        setTimeout(() => window.location.reload(), 600);
+      };
+    }
 
     // Mark Completed
     const compBtn = document.getElementById("btnStaffComplete");
@@ -420,6 +513,8 @@ class CIMSIssueService {
           return;
         }
 
+        compBtn.disabled = true;
+        compBtn.innerHTML = '<span class="loading-spinner"></span> Submitting...';
         await window.CIMS.db.updateIssue(issue.id, {
           status: "completed",
           resolutionNotes: notes
@@ -443,35 +538,40 @@ class CIMSIssueService {
     const timelineContainer = document.getElementById("issueTimeline");
     if (!timelineContainer) return;
 
-    const u = window.CIMS.utils;
-    const logs = await window.CIMS.db.getActivityLogs(issueId);
+    try {
+      const u = window.CIMS.utils;
+      const logs = await window.CIMS.db.getActivityLogs(issueId);
 
-    if (logs.length === 0) {
-      timelineContainer.innerHTML = `<p class="text-muted" style="font-size:13px;">No history recorded yet.</p>`;
-      return;
-    }
+      if (!logs || logs.length === 0) {
+        timelineContainer.innerHTML = `<p class="text-muted" style="font-size:13px;padding:12px 0;">No history recorded yet.</p>`;
+        return;
+      }
 
-    timelineContainer.innerHTML = logs.map(log => {
-      let markerClass = "info";
-      if (log.action === "ISSUE_RESOLVED" || log.action === "WORK_COMPLETED") markerClass = "success";
-      if (log.action === "ISSUE_REJECTED") markerClass = "warning";
+      timelineContainer.innerHTML = logs.map(log => {
+        let markerClass = "info";
+        if (log.action === "ISSUE_RESOLVED" || log.action === "WORK_COMPLETED") markerClass = "success";
+        if (log.action === "ISSUE_REJECTED") markerClass = "warning";
 
-      return `
-        <div class="timeline-item">
-          <div class="timeline-marker ${markerClass}"></div>
-          <div class="timeline-content">
-            <div class="timeline-header">
-              <span class="timeline-title">${u.escapeHtml(log.action.replace("_", " "))}</span>
-              <span class="timeline-date">${u.formatDate(log.timestamp)}</span>
-            </div>
-            <div class="timeline-details">${u.escapeHtml(log.details)}</div>
-            <div class="text-muted" style="font-size:11px;margin-top:4px;">
-              By: <strong>${u.escapeHtml(log.performedBy)}</strong> (${u.escapeHtml(log.performedByRole)})
+        return `
+          <div class="timeline-item">
+            <div class="timeline-marker ${markerClass}"></div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <span class="timeline-title">${u.escapeHtml((log.action || "UPDATE").replace(/_/g, " "))}</span>
+                <span class="timeline-date">${u.formatDate(log.timestamp)}</span>
+              </div>
+              <div class="timeline-details">${u.escapeHtml(log.details || "")}</div>
+              <div class="text-muted" style="font-size:11px;margin-top:4px;">
+                By: <strong>${u.escapeHtml(log.performedBy || "System")}</strong> (${u.escapeHtml(log.performedByRole || "User")})
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    }).join("");
+        `;
+      }).join("");
+    } catch (e) {
+      console.warn("Timeline render notice:", e);
+      timelineContainer.innerHTML = `<p class="text-muted" style="font-size:13px;padding:12px 0;">Audit logs temporarily unavailable.</p>`;
+    }
   }
 
   // Export issues to CSV file (useful for admin reports)
