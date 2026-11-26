@@ -354,6 +354,13 @@ class CIMSFirebaseService {
     }
   }
 
+  withTimeout(promise, ms = 2500) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Cloud request timed out")), ms))
+    ]);
+  }
+
   // --- ISSUES API ---
   async getIssues(filter = {}) {
     let cloudIssues = [];
@@ -370,7 +377,7 @@ class CIMSFirebaseService {
           query = query.where("status", "==", filter.status);
         }
         // Notice: Avoid composite index requirements in Firestore by omitting .orderBy() on compound queries
-        const snapshot = await query.get();
+        const snapshot = await this.withTimeout(query.get());
         cloudIssues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       } catch (err) {
         console.warn("Firestore getIssues error (falling back to institutional storage):", err);
@@ -429,7 +436,7 @@ class CIMSFirebaseService {
 
     if (this.isCloud && this.firestore) {
       try {
-        const doc = await this.firestore.collection("issues").doc(issueId).get();
+        const doc = await this.withTimeout(this.firestore.collection("issues").doc(issueId).get());
         if (doc.exists) {
           return { id: doc.id, ...doc.data() };
         }
@@ -534,9 +541,9 @@ class CIMSFirebaseService {
     let cloudLogs = [];
     if (this.isCloud && this.firestore) {
       try {
-        const snap = await this.firestore.collection("activityLogs")
+        const snap = await this.withTimeout(this.firestore.collection("activityLogs")
           .where("issueId", "==", issueId)
-          .get();
+          .get());
         cloudLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (e) {
         console.warn("Firestore getActivityLogs notice:", e);
@@ -583,9 +590,9 @@ class CIMSFirebaseService {
     let cloudNotifs = [];
     if (this.isCloud && this.firestore) {
       try {
-        const snap = await this.firestore.collection("notifications")
+        const snap = await this.withTimeout(this.firestore.collection("notifications")
           .where("userId", "==", userId)
-          .get();
+          .get());
         cloudNotifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (e) {
         console.warn("Firestore getNotifications notice:", e);
@@ -654,7 +661,7 @@ class CIMSFirebaseService {
         if (role) {
           query = query.where("role", "==", role);
         }
-        const snap = await query.get();
+        const snap = await this.withTimeout(query.get());
         cloudUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
       } catch (e) {
         console.warn("Firestore getUsers notice:", e);
@@ -676,7 +683,7 @@ class CIMSFirebaseService {
     if (!uid) return null;
     if (this.isCloud && this.firestore) {
       try {
-        const doc = await this.firestore.collection("users").doc(uid).get();
+        const doc = await this.withTimeout(this.firestore.collection("users").doc(uid).get());
         if (doc.exists) return { uid: doc.id, ...doc.data() };
       } catch (e) {
         console.warn("Firestore getUserById notice:", e);
