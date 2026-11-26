@@ -234,7 +234,7 @@ const INITIAL_ACTIVITY_LOGS = [
     performedBy: "Prof. Vikram Malhotra",
     performedByUid: "admin-001",
     performedByRole: "admin",
-    details: "Assigned to maintenance technician Ramesh Sharma. Status set to 'Assigned'.",
+    details: "Assigned to helpdesk agent Ramesh Sharma. Status set to 'Assigned'.",
     timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString()
   },
   {

@@ -153,7 +153,7 @@ class CIMSIssueService {
 
     if (currentUser.role === "admin") {
       await this.renderAdminControls(issue, currentUser, actionsContainer);
-    } else if (currentUser.role === "staff") {
+    } else if (currentUser.role === "staff" || currentUser.role === "helpdesk") {
       this.renderStaffControls(issue, currentUser, actionsContainer);
     } else {
       // Student: read-only info
@@ -213,10 +213,10 @@ class CIMSIssueService {
 
         <!-- Staff Assignment Form -->
         <div class="form-group">
-          <label class="form-label">Assign Maintenance Staff</label>
+          <label class="form-label">Assign Helpdesk Agent</label>
           <div style="display:flex;gap:8px;">
             <select id="adminStaffSelect" class="form-control">
-              <option value="">-- Choose Staff Member --</option>
+              <option value="">-- Choose Helpdesk Agent --</option>
               ${staffOptions}
             </select>
             <button id="btnAssignStaff" class="btn btn-primary btn-sm">Assign</button>
@@ -368,9 +368,9 @@ class CIMSIssueService {
     if (!isAssignedToMe && !isUnassigned) {
       container.innerHTML = `
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Staff Actions</h3></div>
+          <div class="card-header"><h3 class="card-title">Helpdesk Actions</h3></div>
           <p class="text-muted" style="font-size:14px;line-height:1.6;">
-            This classroom issue is assigned to <strong>${window.CIMS.utils.escapeHtml(issue.assignedStaffName || "another staff member")}</strong>.
+            This classroom issue is assigned to <strong>${window.CIMS.utils.escapeHtml(issue.assignedStaffName || "another helpdesk agent")}</strong>.
           </p>
           <div style="margin-top:12px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:var(--color-navy-muted);">
             If you need to take over this ticket, contact your facility admin or request reassignment.
@@ -383,9 +383,9 @@ class CIMSIssueService {
     if (isUnassigned) {
       container.innerHTML = `
         <div class="card">
-          <div class="card-header"><h3 class="card-title">Claim Maintenance Task</h3></div>
+          <div class="card-header"><h3 class="card-title">Claim Helpdesk Ticket</h3></div>
           <p class="text-muted" style="font-size:14px;line-height:1.6;margin-bottom:16px;">
-            This classroom issue is currently <strong>Unassigned</strong>. You can take immediate ownership of this repair task.
+            This classroom issue is currently <strong>Unassigned</strong>. You can take immediate ownership of this support ticket.
           </p>
           <button id="btnStaffClaim" class="btn btn-primary btn-block">
             ⚡ Claim & Assign to Me
@@ -397,7 +397,7 @@ class CIMSIssueService {
       if (claimBtn) {
         claimBtn.onclick = async () => {
           claimBtn.disabled = true;
-          claimBtn.innerHTML = '<span class="loading-spinner"></span> Claiming Task...';
+          claimBtn.innerHTML = '<span class="loading-spinner"></span> Claiming Ticket...';
           await window.CIMS.db.updateIssue(issue.id, {
             assignedStaffId: currentUser.uid,
             assignedStaffName: currentUser.fullName,
@@ -407,8 +407,8 @@ class CIMSIssueService {
             action: "STAFF_ASSIGNED",
             name: currentUser.fullName,
             uid: currentUser.uid,
-            role: "staff",
-            details: `Task claimed by maintenance technician ${currentUser.fullName}.`
+            role: "helpdesk",
+            details: `Ticket claimed by helpdesk agent ${currentUser.fullName}.`
           });
 
           await window.CIMS.notifications.notifyStaffAssigned(currentUser.uid, issue, currentUser.fullName);

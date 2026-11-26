@@ -85,9 +85,9 @@ class CIMSNotificationService {
     if (!issue || !issue.studentId) return;
 
     const statusTexts = {
-      assigned: `has been assigned to maintenance technician ${issue.assignedStaffName || "staff"}`,
+      assigned: `has been assigned to helpdesk agent ${issue.assignedStaffName || "staff"}`,
       in_progress: "is now being actively serviced",
-      completed: "has been completed by maintenance staff and is pending admin sign-off",
+      completed: "has been completed by helpdesk staff and is pending admin sign-off",
       resolved: "has been verified and marked RESOLVED",
       rejected: "has been reviewed and declined"
     };

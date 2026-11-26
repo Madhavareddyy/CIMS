@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Profile - CIMS</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/dashboard.css?v=4">
   <link rel="stylesheet" href="css/forms.css">
-  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/responsive.css?v=4">
 </head>
 <body>
 
@@ -97,7 +97,7 @@
               <div>
                 <h3 style="font-size:1.4rem;font-weight:700;color:var(--color-navy-dark);" class="auth-user-name">Loading...</h3>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                  <span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700;" class="auth-user-role">STUDENT</span>
+                  <span class="badge auth-user-role" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:700;">STUDENT</span>
                   <span class="text-muted" style="font-size:13px;" id="profEmail">-</span>
                 </div>
               </div>
@@ -184,13 +184,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <!-- Optional Custom Firebase Configuration -->
-  <script src="js/firebase-config.js?v=3" onerror="/* Custom config optional */"></script>
+  <script src="js/firebase-config.js?v=4" onerror="/* Custom config optional */"></script>
 
   <!-- CIMS Modules -->
-  <script src="js/firebase.js?v=3"></script>
-  <script src="js/auth.js?v=3"></script>
-  <script src="js/notifications.js?v=3"></script>
-  <script src="js/issues.js?v=3"></script>
+  <script src="js/firebase.js?v=4"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/notifications.js?v=4"></script>
+  <script src="js/issues.js?v=4"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
@@ -218,12 +218,12 @@
           <li class="nav-item"><a href="reports.html"><span>Reports & Analytics</span></a></li>
           <li class="nav-item active"><a href="profile.html"><span>Admin Profile</span></a></li>
         `;
-      } else if (currentUser.role === "staff") {
-        label.textContent = "Staff Portal";
+      } else if (currentUser.role === "staff" || currentUser.role === "helpdesk") {
+        label.textContent = "Helpdesk Portal";
         nav.innerHTML = `
           <li class="nav-item"><a href="staff-dashboard.html"><span>Dashboard</span></a></li>
           <li class="nav-item"><a href="assigned-tasks.html"><span>Assigned Tasks</span></a></li>
-          <li class="nav-item active"><a href="profile.html"><span>Staff Profile</span></a></li>
+          <li class="nav-item active"><a href="profile.html"><span>Helpdesk Profile</span></a></li>
         `;
       }
 
@@ -250,14 +250,14 @@
           <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;">
             <li><strong>Master Access:</strong> Full read/write access to all campus classroom issues.</li>
             <li><strong>Dispatch Authority:</strong> Assign maintenance staff, prioritize urgency, verify repair completion, or decline tickets.</li>
-            <li><strong>Staff Management:</strong> Create and supervise technician roster and active workload distribution.</li>
+            <li><strong>Staff Management:</strong> Create and supervise helpdesk roster and active workload distribution.</li>
             <li><strong>Audit & Analytics:</strong> Full access to failure trend reports and CSV audit exports.</li>
           </ul>
         `;
-      } else if (currentUser.role === "staff") {
+      } else if (currentUser.role === "staff" || currentUser.role === "helpdesk") {
         permBox.innerHTML = `
           <ul style="padding-left:20px;display:flex;flex-direction:column;gap:8px;">
-            <li><strong>Field Service:</strong> Read and service work orders assigned to your staff ID.</li>
+            <li><strong>Helpdesk Service:</strong> Read, claim, and service support tickets assigned to your helpdesk ID.</li>
             <li><strong>Status Transitions:</strong> Authorized to accept tasks (set to In Progress) and submit resolution notes upon completion.</li>
             <li><strong>Administrative Operations:</strong> Restricted. Cannot reassign tickets or access unauthorized admin functions.</li>
           </ul>

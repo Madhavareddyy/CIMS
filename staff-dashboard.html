@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff Dashboard - CIMS</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <title>Helpdesk Dashboard - CIMS</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/dashboard.css?v=4">
   <link rel="stylesheet" href="css/forms.css">
-  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/responsive.css?v=4">
 </head>
 <body>
 
@@ -22,12 +22,12 @@
         </div>
         <div class="brand-text">
           <h1>CIMS</h1>
-          <span>Staff Portal</span>
+          <span>Helpdesk Portal</span>
         </div>
       </div>
 
       <div class="sidebar-content">
-        <div class="nav-section-title">Technician Tasks</div>
+        <div class="nav-section-title">Helpdesk Tasks</div>
         <ul class="sidebar-nav">
           <li class="nav-item active">
             <a href="staff-dashboard.html">
@@ -55,7 +55,7 @@
           <div class="user-avatar auth-user-avatar">RS</div>
           <div class="user-info">
             <div class="user-name auth-user-name">Loading...</div>
-            <div class="user-role auth-user-role">Maintenance Staff</div>
+            <div class="user-role auth-user-role">Helpdesk</div>
           </div>
           <button class="btn-logout" title="Sign Out" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:4px;">
             <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -76,8 +76,8 @@
             </svg>
           </button>
           <div class="header-title">
-            <h2>Maintenance Staff Dashboard</h2>
-            <p>Welcome, <span class="auth-user-name">Technician</span> &bull; Facility Services Desk</p>
+            <h2>Helpdesk Dashboard</h2>
+            <p>Welcome, <span class="auth-user-name">Helpdesk</span> &bull; Campus Helpdesk Desk</p>
           </div>
         </div>
 
@@ -220,14 +220,14 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <!-- Optional Custom Firebase Configuration -->
-  <script src="js/firebase-config.js?v=3" onerror="/* Custom config optional */"></script>
+  <script src="js/firebase-config.js?v=4" onerror="/* Custom config optional */"></script>
 
   <!-- CIMS Modules -->
-  <script src="js/firebase.js?v=3"></script>
-  <script src="js/auth.js?v=3"></script>
-  <script src="js/notifications.js?v=3"></script>
-  <script src="js/issues.js?v=3"></script>
-  <script src="js/staff.js?v=3"></script>
+  <script src="js/firebase.js?v=4"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/notifications.js?v=4"></script>
+  <script src="js/issues.js?v=4"></script>
+  <script src="js/staff.js?v=4"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {

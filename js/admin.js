@@ -72,9 +72,20 @@ class CIMSAdminModule {
     const exportBtn = document.getElementById("btnExportIssues");
 
     let allIssues = await window.CIMS.db.getIssues();
+    const urlParams = new URLSearchParams(window.location.search);
+    const staffParam = urlParams.get("staff");
+    const statusParam = urlParams.get("status");
+    if (statusParam && statusFilter) {
+      statusFilter.value = statusParam;
+    }
 
     const render = () => {
       let filtered = [...allIssues];
+
+      // Staff/Helpdesk query parameter filter
+      if (staffParam) {
+        filtered = filtered.filter(i => i.assignedStaffId === staffParam);
+      }
 
       // Status
       const sVal = statusFilter ? statusFilter.value : "";

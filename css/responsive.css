@@ -103,6 +103,19 @@
     font-size: 1.1rem;
   }
 
+  .header-title p {
+    font-size: 11px;
+  }
+
+  .system-status-indicator {
+    display: none;
+  }
+
+  .top-header {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
   .notification-panel {
     width: calc(100vw - 32px);
     right: -60px;

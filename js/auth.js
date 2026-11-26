@@ -227,6 +227,7 @@ class CIMSAuthService {
         window.location.href = "admin-dashboard.html";
         break;
       case "staff":
+      case "helpdesk":
         window.location.href = "staff-dashboard.html";
         break;
       default:
@@ -243,7 +244,12 @@ class CIMSAuthService {
       return null;
     }
 
-    if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    const effectiveAllowed = [...allowedRoles];
+    if (effectiveAllowed.includes("staff") && !effectiveAllowed.includes("helpdesk")) {
+      effectiveAllowed.push("helpdesk");
+    }
+
+    if (effectiveAllowed.length > 0 && !effectiveAllowed.includes(user.role)) {
       alert(`Access Denied: Your account role (${user.role}) is not authorized to access this page.`);
       this.redirectToDashboard(user.role);
       return null;
@@ -264,8 +270,14 @@ class CIMSAuthService {
     });
 
     // User role displays
+    const roleLabels = {
+      student: "STUDENT",
+      admin: "FACILITY ADMIN",
+      staff: "HELPDESK",
+      helpdesk: "HELPDESK"
+    };
     document.querySelectorAll(".auth-user-role").forEach(el => {
-      el.textContent = (user.role || "").toUpperCase();
+      el.textContent = roleLabels[user.role] || (user.role || "").toUpperCase();
     });
 
     // User avatar initials
@@ -300,14 +312,14 @@ class CIMSAuthService {
         <select id="quickPortalSwitcher" style="background:#0f172a;color:#ffffff;border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:3px 6px;font-size:11px;cursor:pointer;">
           <option value="student" ${user.role === 'student' ? 'selected' : ''}>🎓 Student</option>
           <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>🛡️ Facility Admin</option>
-          <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>🔧 Technician</option>
+          <option value="staff" ${user.role === 'staff' || user.role === 'helpdesk' ? 'selected' : ''}>🎧 Helpdesk</option>
         </select>
       `;
       sidebarFooter.appendChild(switchBox);
 
       document.getElementById("quickPortalSwitcher").addEventListener("change", (e) => {
         const targetRole = e.target.value;
-        if (targetRole === user.role) return;
+        if (targetRole === user.role || (targetRole === "staff" && user.role === "helpdesk")) return;
 
         if (targetRole === "admin") {
           this.setCurrentUser({

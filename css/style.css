@@ -283,6 +283,7 @@ body {
 /* Main Content Area */
 .main-wrapper {
   flex: 1;
+  min-width: 0;
   margin-left: var(--sidebar-width);
   display: flex;
   flex-direction: column;
@@ -291,13 +292,16 @@ body {
 
 /* Header Styles */
 .top-header {
-  height: var(--header-height);
+  min-height: var(--header-height);
+  height: auto;
   background-color: var(--color-bg-card);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 32px;
   position: sticky;
   top: 0;
   z-index: 90;
@@ -308,6 +312,8 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  flex: 1 1 240px;
 }
 
 .mobile-toggle {
@@ -318,23 +324,36 @@ body {
   cursor: pointer;
   padding: 6px;
   border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.header-title {
+  min-width: 0;
+  flex: 1;
 }
 
 .header-title h2 {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-navy-dark);
+  line-height: 1.25;
+  word-break: break-word;
 }
 
 .header-title p {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+  word-break: break-word;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .system-status-indicator {

@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Issue Details - CIMS</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/dashboard.css?v=4">
   <link rel="stylesheet" href="css/forms.css">
-  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/responsive.css?v=4">
 </head>
 <body>
 
@@ -130,7 +130,7 @@
               </div>
 
               <div class="detail-block">
-                <div class="detail-label">Assigned Technician</div>
+                <div class="detail-label">Assigned Helpdesk Agent</div>
                 <div class="detail-value" id="issueAssignedStaff">Unassigned</div>
               </div>
 
@@ -180,13 +180,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <!-- Optional Custom Firebase Configuration -->
-  <script src="js/firebase-config.js?v=3" onerror="/* Custom config optional */"></script>
+  <script src="js/firebase-config.js?v=4" onerror="/* Custom config optional */"></script>
 
   <!-- CIMS Modules -->
-  <script src="js/firebase.js?v=3"></script>
-  <script src="js/auth.js?v=3"></script>
-  <script src="js/notifications.js?v=3"></script>
-  <script src="js/issues.js?v=3"></script>
+  <script src="js/firebase.js?v=4"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/notifications.js?v=4"></script>
+  <script src="js/issues.js?v=4"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
@@ -214,8 +214,8 @@
           <li class="nav-item"><a href="reports.html"><span>Reports & Analytics</span></a></li>
           <li class="nav-item"><a href="profile.html"><span>My Profile</span></a></li>
         `;
-      } else if (currentUser.role === "staff") {
-        if (label) label.textContent = "Staff Portal";
+      } else if (currentUser.role === "staff" || currentUser.role === "helpdesk") {
+        if (label) label.textContent = "Helpdesk Portal";
         navContainer.innerHTML = `
           <li class="nav-item"><a href="staff-dashboard.html"><span>Dashboard</span></a></li>
           <li class="nav-item"><a href="assigned-tasks.html"><span>Assigned Tasks</span></a></li>
